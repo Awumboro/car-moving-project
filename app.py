@@ -7,7 +7,10 @@ from streamlit_folium import st_folium
 from datetime import datetime, timedelta
 import numpy as np
 
-st.set_page_config(page_title="Interactive Logistics Sim", layout="wide")
+st.set_page_config(page_title="Pro Logistics Sim", layout="wide")
+
+# Inject FontAwesome for the Car Icon
+st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">', unsafe_allow_html=True)
 
 # 1. State Management
 if 'points' not in st.session_state:
@@ -15,13 +18,13 @@ if 'points' not in st.session_state:
 if 'sim_ready' not in st.session_state:
     st.session_state.sim_ready = False
 
-st.title("🚚 Interactive Logistics & Telemetry Simulator")
+st.title("🚗 Pro Logistics & Telemetry Simulator")
 
 # 2. Sidebar
 with st.sidebar:
     st.header("1. Setup")
     city = st.text_input("City Name", "Midtown, New York, USA")
-    st.info("Click 2 points on the map: START (Green) then END (Red).")
+    st.info("Click 2 points: START (Green) then END (Red).")
     
     if st.button("🔄 Clear & Reset"):
         st.session_state.points = []
@@ -35,51 +38,58 @@ with st.sidebar:
         if st.button("🚀 Deploy Vehicle"):
             st.session_state.sim_ready = True
 
-# 3. Data Logic
+# 3. Robust Data Logic
 @st.cache_data
 def get_city_graph(location):
-    # dist=1500 is a good balance for Manhattan
     return ox.graph_from_address(location, dist=1500, network_type='drive')
 
 @st.cache_data
 def calculate_route_and_telemetry(_G, p1, p2, step_sec):
-    # p1 and p2 are [lat, lon]
-    # Find nearest nodes using X, Y (Lon, Lat)
-    orig_node = ox.distance.nearest_nodes(_G, X=p1[1], Y=p1[0])
-    dest_node = ox.distance.nearest_nodes(_G, X=p2[1], Y=p2[0])
-    
-    # Calculate shortest path
-    route = ox.shortest_path(_G, orig_node, dest_node, weight='length')
-    
-    # Extract coordinates correctly
-    path_coords = []
-    for node_id in route:
-        node_data = _G.nodes[node_id]
-        path_coords.append([node_data['y'], node_data['x']])
-    
-    # Telemetry and Times
-    start_time = datetime(2026, 3, 10, 12, 0, 0)
-    # Use the length of path_coords to ensure matching array sizes
-    telemetry_values = np.random.normal(40, 5, len(path_coords)).tolist()
-    times = [(start_time + timedelta(seconds=i * step_sec)).isoformat() for i in range(len(path_coords))]
-    
-    geojson = {
-        'type': 'Feature',
-        'geometry': {
-            'type': 'LineString',
-            'coordinates': [[c[1], c[0]] for c in path_coords], # GeoJSON uses [Lon, Lat]
-        },
-        'properties': {
-            'times': times,
-            'icon': 'marker',
-            'icon_options': {
-                'icon': 'car', 
-                'prefix': 'fa', 
-                'markerColor': 'red'
+    try:
+        orig_node = ox.distance.nearest_nodes(_G, X=p1[1], Y=p1[0])
+        dest_node = ox.distance.nearest_nodes(_G, X=p2[1], Y=p2[0])
+        route = ox.shortest_path(_G, orig_node, dest_node, weight='length')
+        
+        if not route:
+            return "No route found between these points."
+
+        path_coords = []
+        for node_id in route:
+            # ROBUST CHECK: Use .get() or access via graph nodes safely
+            if node_id in _G.nodes:
+                node_data = _G.nodes[node_id]
+                path_coords.append([node_data['y'], node_data['x']])
+            else:
+                # Fallback: some nodes might be hidden in edges
+                continue
+        
+        if not path_coords:
+            return "Routing data error: No coordinates found."
+
+        start_time = datetime(2026, 3, 10, 12, 0, 0)
+        telemetry_values = np.random.normal(40, 5, len(path_coords)).tolist()
+        times = [(start_time + timedelta(seconds=i * step_sec)).isoformat() for i in range(len(path_coords))]
+        
+        geojson = {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': [[c[1], c[0]] for c in path_coords],
+            },
+            'properties': {
+                'times': times,
+                'icon': 'marker',
+                'icon_options': {
+                    'prefix': 'fa',
+                    'icon': 'car',
+                    'markerColor': 'red',
+                    'iconColor': 'white'
+                }
             }
         }
-    }
-    return {'path': path_coords, 'geojson': geojson, 'telemetry': telemetry_values, 'times': times}
+        return {'path': path_coords, 'geojson': geojson, 'telemetry': telemetry_values, 'times': times}
+    except Exception as e:
+        return f"Routing Error: {str(e)}"
 
 # 4. Map Logic
 G = get_city_graph(city)
@@ -91,27 +101,23 @@ for i, pt in enumerate(st.session_state.points):
     color = 'green' if i == 0 else 'red'
     folium.Marker(pt, icon=folium.Icon(color=color, icon='info-sign')).add_to(m)
 
-# If simulation is active, add layers
 sim_data = None
 if st.session_state.sim_ready and len(st.session_state.points) == 2:
-    sim_data = calculate_route_and_telemetry(G, st.session_state.points[0], st.session_state.points[1], speed_mult)
+    sim_result = calculate_route_and_telemetry(G, st.session_state.points[0], st.session_state.points[1], speed_mult)
     
-    # The blue route line
-    AntPath(locations=sim_data['path'], color='blue', weight=5, delay=4000).add_to(m)
-    
-    # The moving car
-    TimestampedGeoJson(
-        {'type': 'FeatureCollection', 'features': [sim_data['geojson']]},
-        period='PT1S', 
-        add_last_point=True, 
-        auto_play=True, 
-        loop=False
-    ).add_to(m)
+    if isinstance(sim_result, str):
+        st.error(sim_result)
+        st.session_state.sim_ready = False
+    else:
+        sim_data = sim_result
+        AntPath(locations=sim_data['path'], color='blue', weight=5, delay=4000).add_to(m)
+        TimestampedGeoJson(
+            {'type': 'FeatureCollection', 'features': [sim_data['geojson']]},
+            period='PT1S', add_last_point=True, auto_play=True, loop=False, duration='PT0S'
+        ).add_to(m)
 
-# Unified Map Display
-output = st_folium(m, width=1300, height=550, key="unified_sim_map")
+output = st_folium(m, width=1300, height=550, key="unified_map_v3")
 
-# Interaction logic
 if output['last_clicked'] and not st.session_state.sim_ready:
     new_pt = [output['last_clicked']['lat'], output['last_clicked']['lng']]
     if len(st.session_state.points) < 2 and new_pt not in st.session_state.points:
@@ -122,17 +128,6 @@ if output['last_clicked'] and not st.session_state.sim_ready:
 if sim_data:
     st.subheader("📊 Vehicle Telemetry Dashboard")
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=sim_data['times'], 
-        y=sim_data['telemetry'], 
-        mode='lines',
-        line=dict(color='firebrick', width=3),
-        fill='tozeroy'
-    ))
-    fig.update_layout(
-        xaxis_title="Simulation Time",
-        yaxis_title="Speed (km/h)",
-        height=300,
-        margin=dict(l=0, r=0, t=20, b=0)
-    )
+    fig.add_trace(go.Scatter(x=sim_data['times'], y=sim_data['telemetry'], fill='tozeroy', line=dict(color='red')))
+    fig.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
     st.plotly_chart(fig, use_container_width=True)
