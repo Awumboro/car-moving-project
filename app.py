@@ -62,7 +62,7 @@ def prepare_simulation_data(_G, p1, p2, speed):
         },
         'properties': {
             'times': times,
-            'icon': 'marker',
+            'icon': 'car',
             'icon_options': {
                 'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white', 'shape': 'circle', 'size': 'lg'
             }
