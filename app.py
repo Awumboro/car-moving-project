@@ -9,20 +9,21 @@ st.set_page_config(page_title="Pro Vehicle Simulator", layout="wide")
 
 st.title("🚀 Professional Vehicle Route Simulator")
 
-# 1. Sidebar with "Action" button to prevent lag
+# 1. Sidebar with "Action" button to prevent slider lag
 with st.sidebar:
     st.header("Simulation Parameters")
     place_input = st.text_input("City/Location", "Midtown, New York, USA")
     dist_input = st.slider("Route Range (m)", 500, 2000, 1000)
     speed_input = st.slider("Seconds per node", 1, 10, 2)
     st.info("Adjust parameters and then click Deploy below.")
+    # This button is the key to stopping the lag
     deploy_btn = st.button("🚀 Deploy / Refresh Vehicle")
 
-# 2. Logic to generate the timed route
+# 2. Logic to generate the timed route (Cached)
 @st.cache_data(show_spinner="Fetching map and calculating route...")
 def get_clean_route(location, distance, step_duration):
     try:
-        # Get graph and path
+        # Fetch network
         G = ox.graph_from_address(location, dist=distance, network_type='drive')
         nodes = list(G.nodes())
         route = ox.shortest_path(G, nodes[0], nodes[-1], weight='length')
@@ -39,11 +40,11 @@ def get_clean_route(location, distance, step_duration):
             current_time = (start_time + timedelta(seconds=i * step_duration)).isoformat()
             times.append(current_time)
 
-        # ONE feature with MANY times = One car that moves (No trail)
+        # ONE LineString feature with MANY times = One car that moves (No trail)
         moving_car_feature = {
             'type': 'Feature',
             'geometry': {
-                'type': 'LineString', # LineString + times = moving marker along line
+                'type': 'LineString', 
                 'coordinates': coordinates,
             },
             'properties': {
@@ -65,16 +66,18 @@ def get_clean_route(location, distance, step_duration):
     except Exception as e:
         return str(e)
 
-# 3. Render the Map
+# 3. Execution Logic
+# Only run the heavy calculation if the button is pressed OR if it's the first load
 if deploy_btn:
     data = get_clean_route(place_input, dist_input, speed_input)
     
     if isinstance(data, str):
         st.error(f"Error: {data}")
     else:
+        # Create the Base Map
         m = folium.Map(location=data['center'], zoom_start=16, tiles="cartodbpositron")
         
-        # Static Flowing Path
+        # Static Flowing Path (Visualizes where the car WILL go)
         AntPath(
             locations=data['path'],
             color='blue',
@@ -82,16 +85,17 @@ if deploy_btn:
             opacity=0.5
         ).add_to(m)
 
-        # Single Moving Marker
+        # The Moving Marker (Handled in Browser)
         TimestampedGeoJson(
             {'type': 'FeatureCollection', 'features': [data['geojson']]},
             period='PT1S',
             add_last_point=True,
             auto_play=True,
             loop=True,
-            max_speed=1
+            max_speed=1,
+            time_slider_drag_update=True
         ).add_to(m)
 
-        st_folium(m, width=1200, height=600, key="sim_map")
+        st_folium(m, width=1300, height=700, key="sim_map")
 else:
-    st.write("👈 Set your parameters and click **Deploy Vehicle** to start.")
+    st.info("👈 Set your parameters in the sidebar and click **Deploy Vehicle** to start.")
