@@ -36,11 +36,47 @@ with st.sidebar:
         if st.button("Deploy Vehicle"):
             st.session_state.sim_ready = True
 
-# 2. Data Processing (One-time calculation)
-@st.cache_data
+# # 2. Data Processing (One-time calculation)
+# @st.cache_data
 def get_map_graph(location):
     return ox.graph_from_address(location, dist=3500, network_type='drive')
 
+# @st.cache_data
+# def prepare_simulation_data(_G, p1, p2, speed):
+#     n1 = ox.distance.nearest_nodes(_G, X=p1[1], Y=p1[0])
+#     n2 = ox.distance.nearest_nodes(_G, X=p2[1], Y=p2[0])
+#     route = ox.shortest_path(_G, n1, n2, weight='length')
+    
+#     path_coords = [[_G.nodes[n]['y'], _G.nodes[n]['x']] for n in route]
+#     start_time = datetime(2026, 3, 10, 12, 0, 0)
+#     times = [(start_time + timedelta(seconds=i * speed)).isoformat() for i in range(len(route))]
+    
+#     # TELEMETRY: Pre-calculate the whole trip data
+#     speeds = np.random.normal(40, 5, len(route)).tolist()
+    
+#     # GEOJSON: One feature that MOVES
+#     geojson = {
+#         'type': 'Feature',
+#         'geometry': {
+#             'type': 'LineString',
+#             'coordinates': [[c[1], c[0]] for c in path_coords],
+#         },
+#         'properties': {
+#             'times': times,
+#             'icon': 'marker',
+#             # 'popup': 'Vehicle 1',
+#             'tooltip': 'Vehicle 1',
+#             'speed': speeds[0],  # Initial speed
+#             'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
+#             'braking': np.random.normal(0.5, 0.1),  # Random braking
+#             'icon_options': {
+#                 'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white',
+           
+#             }
+#         }
+#     }
+    
+#     return {'path': path_coords, 'geojson': geojson, 'speeds': speeds, 'times': times}
 @st.cache_data
 def prepare_simulation_data(_G, p1, p2, speed):
     n1 = ox.distance.nearest_nodes(_G, X=p1[1], Y=p1[0])
@@ -51,10 +87,8 @@ def prepare_simulation_data(_G, p1, p2, speed):
     start_time = datetime(2026, 3, 10, 12, 0, 0)
     times = [(start_time + timedelta(seconds=i * speed)).isoformat() for i in range(len(route))]
     
-    # TELEMETRY: Pre-calculate the whole trip data
     speeds = np.random.normal(40, 5, len(route)).tolist()
     
-    # GEOJSON: One feature that MOVES
     geojson = {
         'type': 'Feature',
         'geometry': {
@@ -64,39 +98,46 @@ def prepare_simulation_data(_G, p1, p2, speed):
         'properties': {
             'times': times,
             'icon': 'marker',
-            # 'popup': 'Vehicle 1',
             'tooltip': 'Vehicle 1',
-            'speed': speeds[0],  # Initial speed
-            'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
-            'braking': np.random.normal(0.5, 0.1),  # Random braking
             'icon_options': {
-                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white',
-           
+                'prefix': 'fa', 
+                'icon': 'car', 
+                'color': 'red',     # 'color' is more compatible with the plugin
+                'iconColor': 'white'
             }
         }
     }
-    # geojson = {
-    #     'type': 'Feature',
-    #     'geometry': {
-    #         'type': 'LineString',
-    #         'coordinates': [[c[1], c[0]] for c in path_coords],
-    #     },
-    #     'properties': {
-    #         'times': times,
-    #         'icon': 'marker',
-    #         'tooltip': 'Vehicle 1',
-    #         'icon_options': {
-    #             'prefix': 'fa',
-    #             'icon': 'car',
-    #             'color': 'red' # Use 'color' instead of 'markerColor' for this plugin
-    #             }
-    #         }
-    #     }
     return {'path': path_coords, 'geojson': geojson, 'speeds': speeds, 'times': times}
 
-# 3. Build the Map
+# # 3. Build the Map
+# G = get_map_graph(city)
+# center = st.session_state.points[0] if st.session_state.points else [40.7580, -73.9855]
+
+# --- 1. Geocoding Logic (Add this new cached function) ---
+@st.cache_data
+def get_city_center(location):
+    try:
+        # Returns (lat, lon)
+        return ox.geocode(location)
+    except:
+        # Fallback to a default if geocoding fails (e.g., Accra coordinates)
+        return [5.6037, -0.1870]
+
+# --- 2. Build the Map ---
 G = get_map_graph(city)
-center = st.session_state.points[0] if st.session_state.points else [40.7580, -73.9855]
+
+# Auto-extract city center from the text input
+city_lat_lon = get_city_center(city)
+
+# Hierarchical centering logic
+if st.session_state.points:
+    # Center on the first clicked point (Start)
+    center = st.session_state.points[0]
+else:
+    # Center on the city's geographical center
+    center = city_lat_lon
+
+
 m = folium.Map(location=center, zoom_start=12, tiles="cartodbpositron", control_scale=True, prefer_canvas=True, )
 
 # Draw selection pins
