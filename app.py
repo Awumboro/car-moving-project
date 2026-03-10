@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="Stable Pro Logistics", layout="wide")
+st.set_page_config(page_title="Moving Car Project", layout="wide")
 
 # Inject FontAwesome for the car icon
 # st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">', unsafe_allow_html=True)
@@ -15,12 +15,13 @@ st.set_page_config(page_title="Stable Pro Logistics", layout="wide")
 if 'points' not in st.session_state: st.session_state.points = []
 if 'sim_ready' not in st.session_state: st.session_state.sim_ready = False
 
-st.title("🚚 Stable Logistics & Telemetry Simulator")
+st.title("Logistics & Telemetry Simulator")
 
 # 1. Sidebar Setup
 with st.sidebar:
     st.header("1. Setup")
-    city = st.text_input("City Name", "Midtown, New York, USA")
+    # city = st.text_input("City Name", "Midtown, New York, USA")
+    city = st.text_input("City Name", "Accra, Ghana")
     st.info("Click 2 points: START (Green) then END (Red).")
     
     if st.button("🔄 Reset"):
