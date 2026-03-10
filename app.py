@@ -1,81 +1,72 @@
+import streamlit as st
 import osmnx as ox
+import folium
+from streamlit_folium import st_folium
 import time
-import threading
 import numpy as np
-from ipyleaflet import Map, Marker, AntPath, WidgetControl, AwesomeIcon
-from ipywidgets import HTML
-from IPython.display import display
-#done
 
-# 1. Configuration & Data Retrieval
-PLACE_NAME = "Empire State Building, New York, USA"
-DISTANCE = 800  # meters
-TRAVEL_SPEED = 0.5 # seconds per node update
+# Page setup
+st.set_page_config(page_title="Vehicle Tracker", layout="wide")
+st.title("🚗 Interactive Vehicle Route Simulator")
 
-print("Fetching map data... please wait.")
-G = ox.graph_from_address(PLACE_NAME, dist=DISTANCE, network_type='drive')
-nodes = list(G.nodes())
+# 1. Sidebar Inputs
+with st.sidebar:
+    st.header("Settings")
+    place = st.text_input("Location", "Empire State Building, New York, USA")
+    speed = st.slider("Simulation Speed (sec/step)", 0.1, 1.0, 0.3)
+    run_btn = st.button("🚀 Launch Simulation")
 
-# Find a route between two distant nodes in the graph
-orig_node = nodes[0]
-dest_node = nodes[len(nodes)//2] 
-route = ox.shortest_path(G, orig_node, dest_node, weight='length')
-route_coords = [[G.nodes[n]['y'], G.nodes[n]['x']] for n in route]
+# 2. Map & Route Logic (Cached for speed)
+@st.cache_data
+def get_route(location):
+    G = ox.graph_from_address(location, dist=800, network_type='drive')
+    nodes = list(G.nodes())
+    route = ox.shortest_path(G, nodes[0], nodes[len(nodes)//2], weight='length')
+    return [[G.nodes[n]['y'], G.nodes[n]['x']] for n in route]
 
-# 2. Initialize Map Components
-# Create a car icon for the marker
-car_icon = AwesomeIcon(name='car', marker_color='red', icon_color='white')
+try:
+    route_coords = get_route(place)
+except Exception as e:
+    st.error(f"Could not find location: {e}")
+    st.stop()
 
-m = Map(center=route_coords[0], zoom=16)
+# 3. UI Placeholders
+# We use placeholders so we can update the map in the same spot
+status_box = st.empty()
+map_placeholder = st.empty()
 
-# Create the dashboard UI
-dashboard = HTML(
-    value="<b>Initializing system...</b>",
-    layout={'padding': '10px'}
-)
-
-# Create the vehicle marker
-car_marker = Marker(location=route_coords[0], icon=car_icon, draggable=False)
-
-# Add elements to map
-m.add_layer(car_marker)
-m.add_layer(AntPath(locations=route_coords, color='blue', pulse_color='white'))
-m.add_control(WidgetControl(widget=dashboard, position='topright'))
-
-# 3. The Simulation Logic
-def run_vehicle_simulation():
-    """Background task to move the car and update data."""
-    time.sleep(2) # Wait for the map to render in the browser
-    
-    total_steps = len(route_coords)
-    
+# 4. Simulation Execution
+if run_btn:
     for i, coord in enumerate(route_coords):
-        # Update the physical marker position
-        car_marker.location = coord
+        # Update Dashboard
+        current_speed = np.random.uniform(30, 60)
+        battery = max(0, 100 - i)
         
-        # Calculate simulated metrics
-        current_speed = np.random.uniform(25, 55)
-        battery_level = max(0, 100 - (i * (100/total_steps)))
-        
-        # Update the HTML Dashboard
-        dashboard.value = f"""
-        <div style="background-color: white; border: 2px solid #333; border-radius: 5px; padding: 10px; min-width: 150px;">
-            <h4 style="margin: 0 0 10px 0; color: #d9534f;">Vehicle Telemetry</h4>
-            <table style="width: 100%;">
-                <tr><td><b>Progress:</b></td><td>{i+1}/{total_steps}</td></tr>
-                <tr><td><b>Speed:</b></td><td>{current_speed:.1f} km/h</td></tr>
-                <tr><td><b>Battery:</b></td><td>{battery_level:.1f}%</td></tr>
-            </table>
-        </div>
-        """
-        
-        time.sleep(TRAVEL_SPEED)
-    
-    dashboard.value = "<div style='background: white; padding: 10px;'><b>Destination Reached.</b></div>"
+        status_box.markdown(f"""
+        ### Telemetry
+        **Progress:** {i+1}/{len(route_coords)} | **Speed:** {current_speed:.1f} km/h | **Battery:** {battery}%
+        """)
 
-# 4. Execution
-display(m)
-
-# Run the simulation in a background thread so the map remains interactive
-simulation_thread = threading.Thread(target=run_vehicle_simulation)
-simulation_thread.start()
+        # Re-render the map at the new position
+        m = folium.Map(location=coord, zoom_start=16)
+        
+        # Draw the full planned path
+        folium.PolyLine(route_coords, color="blue", weight=2, opacity=0.5).add_to(m)
+        
+        # Draw the car
+        folium.Marker(
+            location=coord, 
+            icon=folium.Icon(color='red', icon='car', prefix='fa')
+        ).add_to(m)
+        
+        with map_placeholder:
+            st_folium(m, height=500, width=1200, key=f"map_{i}")
+        
+        time.sleep(speed)
+    st.success("Target Reached!")
+else:
+    # Show initial static map
+    m = folium.Map(location=route_coords[0], zoom_start=16)
+    folium.PolyLine(route_coords, color="blue", weight=2).add_to(m)
+    with map_placeholder:
+        st_folium(m, height=500, width=1200)
