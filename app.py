@@ -5,68 +5,76 @@ from streamlit_folium import st_folium
 import time
 import numpy as np
 
-# Page setup
 st.set_page_config(page_title="Vehicle Tracker", layout="wide")
-st.title("🚗 Interactive Vehicle Route Simulator")
 
-# 1. Sidebar Inputs
+# 1. Persistent State - This keeps the car's position saved
+if 'current_step' not in st.session_state:
+    st.session_state.current_step = 0
+if 'run_sim' not in st.session_state:
+    st.session_state.run_sim = False
+
+# 2. Sidebar Settings
 with st.sidebar:
-    st.header("Settings")
+    st.title("🚗 Controller")
     place = st.text_input("Location", "Empire State Building, New York, USA")
-    speed = st.slider("Simulation Speed (sec/step)", 0.1, 1.0, 0.3)
-    run_btn = st.button("🚀 Launch Simulation")
+    speed = st.slider("Step Delay", 0.01, 1.0, 0.2)
+    if st.button("🚀 Start / Resume"):
+        st.session_state.run_sim = True
+    if st.button("⏹ Stop"):
+        st.session_state.run_sim = False
+    if st.button("🔄 Reset"):
+        st.session_state.current_step = 0
+        st.session_state.run_sim = False
 
-# 2. Map & Route Logic (Cached for speed)
+# 3. Data Loading (Cached)
 @st.cache_data
-def get_route(location):
+def get_route_data(location):
     G = ox.graph_from_address(location, dist=800, network_type='drive')
     nodes = list(G.nodes())
     route = ox.shortest_path(G, nodes[0], nodes[len(nodes)//2], weight='length')
     return [[G.nodes[n]['y'], G.nodes[n]['x']] for n in route]
 
-try:
-    route_coords = get_route(place)
-except Exception as e:
-    st.error(f"Could not find location: {e}")
-    st.stop()
+coords = get_route_data(place)
 
-# 3. UI Placeholders
-# We use placeholders so we can update the map in the same spot
-status_box = st.empty()
-map_placeholder = st.empty()
+# 4. The Map Display Logic
+def draw_map(step):
+    current_loc = coords[step]
+    
+    # We fix the center and zoom so it doesn't "jump"
+    m = folium.Map(location=current_loc, zoom_start=16)
+    
+    # Path trail
+    folium.PolyLine(coords, color="blue", weight=2, opacity=0.3).add_to(m)
+    
+    # The Vehicle
+    folium.Marker(
+        location=current_loc,
+        icon=folium.Icon(color='red', icon='car', prefix='fa')
+    ).add_to(m)
+    
+    # RETURN_ON_HOVER=False and use_container_width=True help performance
+    return st_folium(
+        m, 
+        key="vehicle_map",
+        height=500, 
+        width=1000,
+        returned_objects=[] # This prevents the app from re-running when you click the map
+    )
 
-# 4. Simulation Execution
-if run_btn:
-    for i, coord in enumerate(route_coords):
-        # Update Dashboard
-        current_speed = np.random.uniform(30, 60)
-        battery = max(0, 100 - i)
-        
-        status_box.markdown(f"""
-        ### Telemetry
-        **Progress:** {i+1}/{len(route_coords)} | **Speed:** {current_speed:.1f} km/h | **Battery:** {battery}%
-        """)
+# 5. The Animation Loop
+status = st.empty()
 
-        # Re-render the map at the new position
-        m = folium.Map(location=coord, zoom_start=16)
+if st.session_state.run_sim:
+    while st.session_state.current_step < len(coords) and st.session_state.run_sim:
+        step = st.session_state.current_step
         
-        # Draw the full planned path
-        folium.PolyLine(route_coords, color="blue", weight=2, opacity=0.5).add_to(m)
+        status.metric("Speed", f"{np.random.uniform(20,50):.1f} km/h", f"Step {step}")
         
-        # Draw the car
-        folium.Marker(
-            location=coord, 
-            icon=folium.Icon(color='red', icon='car', prefix='fa')
-        ).add_to(m)
+        draw_map(step)
         
-        with map_placeholder:
-            st_folium(m, height=500, width=1200, key=f"map_{i}")
-        
+        st.session_state.current_step += 1
         time.sleep(speed)
-    st.success("Target Reached!")
+        st.rerun() # This is the "correct" way to animate in modern Streamlit
 else:
-    # Show initial static map
-    m = folium.Map(location=route_coords[0], zoom_start=16)
-    folium.PolyLine(route_coords, color="blue", weight=2).add_to(m)
-    with map_placeholder:
-        st_folium(m, height=500, width=1200)
+    draw_map(st.session_state.current_step)
+    status.write("Simulation Paused. Press Start to begin.")
