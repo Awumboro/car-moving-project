@@ -79,6 +79,8 @@ m = folium.Map(location=center, zoom_start=15, tiles="cartodbpositron")
 for i, p in enumerate(st.session_state.points):
     folium.Marker(p, icon=folium.Icon(color='green' if i==0 else 'red')).add_to(m)
 
+
+
 sim_data = None
 if st.session_state.sim_ready and len(st.session_state.points) == 2:
     sim_data = prepare_simulation_data(G, st.session_state.points[0], st.session_state.points[1], step_sec)
@@ -89,7 +91,7 @@ if st.session_state.sim_ready and len(st.session_state.points) == 2:
     # The car (animated in browser JS)
     TimestampedGeoJson(
         {'type': 'FeatureCollection', 'features': [sim_data['geojson']]},
-        period='PT1S', add_last_point=True, auto_play=True, loop=False
+        period='PT1S', add_last_point=True, auto_play=True, loop=False, max_speed=1, loop_button=True, date_options='YYYY/MM/DD HH:mm:ss', time_slider_drag_update=True
     ).add_to(m)
 
 # DISPLAY MAP ONCE
