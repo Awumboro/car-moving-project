@@ -55,26 +55,6 @@ def prepare_simulation_data(_G, p1, p2, speed):
     speeds = np.random.normal(40, 5, len(route)).tolist()
     
     # GEOJSON: One feature that MOVES
-    # geojson = {
-    #     'type': 'Feature',
-    #     'geometry': {
-    #         'type': 'LineString',
-    #         'coordinates': [[c[1], c[0]] for c in path_coords],
-    #     },
-    #     'properties': {
-    #         'times': times,
-    #         'icon': 'marker',
-    #         # 'popup': 'Vehicle 1',
-    #         'tooltip': 'Vehicle 1',
-    #         'speed': speeds[0],  # Initial speed
-    #         'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
-    #         'braking': np.random.normal(0.5, 0.1),  # Random braking
-    #         'icon_options': {
-    #             'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white',
-           
-    #         }
-    #     }
-    # }
     geojson = {
         'type': 'Feature',
         'geometry': {
@@ -84,20 +64,40 @@ def prepare_simulation_data(_G, p1, p2, speed):
         'properties': {
             'times': times,
             'icon': 'marker',
+            # 'popup': 'Vehicle 1',
             'tooltip': 'Vehicle 1',
+            'speed': speeds[0],  # Initial speed
+            'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
+            'braking': np.random.normal(0.5, 0.1),  # Random braking
             'icon_options': {
-                'prefix': 'fa',
-                'icon': 'car',
-                'color': 'red' # Use 'color' instead of 'markerColor' for this plugin
-                }
+                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white',
+           
             }
         }
+    }
+    # geojson = {
+    #     'type': 'Feature',
+    #     'geometry': {
+    #         'type': 'LineString',
+    #         'coordinates': [[c[1], c[0]] for c in path_coords],
+    #     },
+    #     'properties': {
+    #         'times': times,
+    #         'icon': 'marker',
+    #         'tooltip': 'Vehicle 1',
+    #         'icon_options': {
+    #             'prefix': 'fa',
+    #             'icon': 'car',
+    #             'color': 'red' # Use 'color' instead of 'markerColor' for this plugin
+    #             }
+    #         }
+    #     }
     return {'path': path_coords, 'geojson': geojson, 'speeds': speeds, 'times': times}
 
 # 3. Build the Map
 G = get_map_graph(city)
 center = st.session_state.points[0] if st.session_state.points else [40.7580, -73.9855]
-m = folium.Map(location=center, zoom_start=25, tiles="cartodbpositron")
+m = folium.Map(location=center, zoom_start=12, tiles="cartodbpositron", control_scale=True, prefer_canvas=True, )
 
 # Draw selection pins
 for i, p in enumerate(st.session_state.points):
