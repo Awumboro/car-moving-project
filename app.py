@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Stable Pro Logistics", layout="wide")
 
 # Inject FontAwesome for the car icon
-st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">', unsafe_allow_html=True)
+# st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">', unsafe_allow_html=True)
 
 if 'points' not in st.session_state: st.session_state.points = []
 if 'sim_ready' not in st.session_state: st.session_state.sim_ready = False
