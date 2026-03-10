@@ -1,5 +1,6 @@
 osmnx
+folium
 streamlit
 streamlit-folium
-folium
-pandas
+plotly
+numpy
