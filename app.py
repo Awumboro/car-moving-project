@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Moving Car Project", layout="wide")
 
 # Inject FontAwesome for the car icon
-# st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">', unsafe_allow_html=True)
+st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">', unsafe_allow_html=True)
 
 if 'points' not in st.session_state: st.session_state.points = []
 if 'sim_ready' not in st.session_state: st.session_state.sim_ready = False
@@ -55,6 +55,26 @@ def prepare_simulation_data(_G, p1, p2, speed):
     speeds = np.random.normal(40, 5, len(route)).tolist()
     
     # GEOJSON: One feature that MOVES
+    # geojson = {
+    #     'type': 'Feature',
+    #     'geometry': {
+    #         'type': 'LineString',
+    #         'coordinates': [[c[1], c[0]] for c in path_coords],
+    #     },
+    #     'properties': {
+    #         'times': times,
+    #         'icon': 'marker',
+    #         # 'popup': 'Vehicle 1',
+    #         'tooltip': 'Vehicle 1',
+    #         'speed': speeds[0],  # Initial speed
+    #         'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
+    #         'braking': np.random.normal(0.5, 0.1),  # Random braking
+    #         'icon_options': {
+    #             'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white',
+           
+    #         }
+    #     }
+    # }
     geojson = {
         'type': 'Feature',
         'geometry': {
@@ -64,17 +84,14 @@ def prepare_simulation_data(_G, p1, p2, speed):
         'properties': {
             'times': times,
             'icon': 'marker',
-            # 'popup': 'Vehicle 1',
             'tooltip': 'Vehicle 1',
-            'speed': speeds[0],  # Initial speed
-            'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
-            'braking': np.random.normal(0.5, 0.1),  # Random braking
             'icon_options': {
-                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white', 'shape': 'circle', 
-                'size': 'lg', 'className': 'blinking-icon', 'defaultIcon': False
+                'prefix': 'fa',
+                'icon': 'car',
+                'color': 'red' # Use 'color' instead of 'markerColor' for this plugin
+                }
             }
         }
-    }
     return {'path': path_coords, 'geojson': geojson, 'speeds': speeds, 'times': times}
 
 # 3. Build the Map
