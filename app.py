@@ -39,44 +39,8 @@ with st.sidebar:
 # # 2. Data Processing (One-time calculation)
 # @st.cache_data
 def get_map_graph(location):
-    return ox.graph_from_address(location, dist=3500, network_type='drive')
+    return ox.graph_from_address(location, dist=10500, network_type='drive')
 
-# @st.cache_data
-# def prepare_simulation_data(_G, p1, p2, speed):
-#     n1 = ox.distance.nearest_nodes(_G, X=p1[1], Y=p1[0])
-#     n2 = ox.distance.nearest_nodes(_G, X=p2[1], Y=p2[0])
-#     route = ox.shortest_path(_G, n1, n2, weight='length')
-    
-#     path_coords = [[_G.nodes[n]['y'], _G.nodes[n]['x']] for n in route]
-#     start_time = datetime(2026, 3, 10, 12, 0, 0)
-#     times = [(start_time + timedelta(seconds=i * speed)).isoformat() for i in range(len(route))]
-    
-#     # TELEMETRY: Pre-calculate the whole trip data
-#     speeds = np.random.normal(40, 5, len(route)).tolist()
-    
-#     # GEOJSON: One feature that MOVES
-#     geojson = {
-#         'type': 'Feature',
-#         'geometry': {
-#             'type': 'LineString',
-#             'coordinates': [[c[1], c[0]] for c in path_coords],
-#         },
-#         'properties': {
-#             'times': times,
-#             'icon': 'marker',
-#             # 'popup': 'Vehicle 1',
-#             'tooltip': 'Vehicle 1',
-#             'speed': speeds[0],  # Initial speed
-#             'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
-#             'braking': np.random.normal(0.5, 0.1),  # Random braking
-#             'icon_options': {
-#                 'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white',
-           
-#             }
-#         }
-#     }
-    
-#     return {'path': path_coords, 'geojson': geojson, 'speeds': speeds, 'times': times}
 @st.cache_data
 def prepare_simulation_data(_G, p1, p2, speed):
     n1 = ox.distance.nearest_nodes(_G, X=p1[1], Y=p1[0])
