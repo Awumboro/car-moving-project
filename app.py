@@ -64,7 +64,7 @@ def prepare_simulation_data(_G, p1, p2, speed):
             'times': times,
             'icon': 'marker',
             'icon_options': {
-                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white'
+                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white', 'shape': 'circle', 'size': 'lg'
             }
         }
     }
@@ -86,7 +86,7 @@ if st.session_state.sim_ready and len(st.session_state.points) == 2:
     sim_data = prepare_simulation_data(G, st.session_state.points[0], st.session_state.points[1], step_sec)
     
     # The blue flow line
-    AntPath(locations=sim_data['path'], color='blue', weight=5, delay=4000).add_to(m)
+    AntPath(locations=sim_data['path'], color='red', weight=5, delay=4000).add_to(m)
     
     # The car (animated in browser JS)
     TimestampedGeoJson(
