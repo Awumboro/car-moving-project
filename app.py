@@ -39,7 +39,7 @@ with st.sidebar:
 # # 2. Data Processing (One-time calculation)
 # @st.cache_data
 def get_map_graph(location):
-    return ox.graph_from_address(location, dist=10500, network_type='drive')
+    return ox.graph_from_address(location, dist=4000, network_type='drive')
 
 @st.cache_data
 def prepare_simulation_data(_G, p1, p2, speed):
