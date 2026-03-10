@@ -32,7 +32,7 @@ with st.sidebar:
     step_sec = st.slider("Seconds per node", 1, 10, 2)
     
     if len(st.session_state.points) == 2:
-        if st.button("🚀 Deploy Vehicle"):
+        if st.button("Deploy Vehicle"):
             st.session_state.sim_ready = True
 
 # 2. Data Processing (One-time calculation)
@@ -63,9 +63,14 @@ def prepare_simulation_data(_G, p1, p2, speed):
         'properties': {
             'times': times,
             'icon': 'marker',
-            'popup': 'Vehicle 1',
+            # 'popup': 'Vehicle 1',
+            'tooltip': 'Vehicle 1',
+            'speed': speeds[0],  # Initial speed
+            'acceleration': np.random.normal(0.5, 0.1),  # Random acceleration
+            'braking': np.random.normal(0.5, 0.1),  # Random braking
             'icon_options': {
-                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white', 'shape': 'circle', 'size': 'lg'
+                'prefix': 'fa', 'icon': 'car', 'markerColor': 'red', 'iconColor': 'white', 'shape': 'circle', 
+                'size': 'lg', 'className': 'blinking-icon', 'defaultIcon': False
             }
         }
     }
@@ -74,7 +79,7 @@ def prepare_simulation_data(_G, p1, p2, speed):
 # 3. Build the Map
 G = get_map_graph(city)
 center = st.session_state.points[0] if st.session_state.points else [40.7580, -73.9855]
-m = folium.Map(location=center, zoom_start=15, tiles="cartodbpositron")
+m = folium.Map(location=center, zoom_start=25, tiles="cartodbpositron")
 
 # Draw selection pins
 for i, p in enumerate(st.session_state.points):
@@ -87,7 +92,7 @@ if st.session_state.sim_ready and len(st.session_state.points) == 2:
     sim_data = prepare_simulation_data(G, st.session_state.points[0], st.session_state.points[1], step_sec)
     
     # The blue flow line
-    AntPath(locations=sim_data['path'], color='red', weight=5, delay=4000).add_to(m)
+    AntPath(locations=sim_data['path'], color='blue', weight=5, delay=4000).add_to(m)
     
     # The car (animated in browser JS)
     TimestampedGeoJson(
